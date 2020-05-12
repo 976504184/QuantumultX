@@ -16,8 +16,17 @@ Surge 4.0 :
 lkyl.js = type=cron,cronexp=35 5 0 * * *,script-path=https://raw.githubusercontent.com/Sunert/Scripts/master/Task/lkyl.js,script-update-interval=0
 
 # 来客有礼 Cookie.
-lkyl.js = type=http-request,pattern=https:\/\/draw\.jdfcloud\.com\/\/api\/bean\/square\/silverBean\/task\/get\?,script-path=https://raw.githubusercontent.com/Sunert/Scripts/master/Task/lkyl.js,
+lkyl.js = type=http-request,pattern=https:\/\/draw\.jdfcloud\.com\/\/api\/bean\/square\/silverBean\/task\/get\?,script-path=https://raw.githubusercontent.com/Sunert/Scripts/master/Task/lkyl.js
 ~~~~~~~~~~~~~~~~
+Loon 2.1.0+
+[Script]
+# 本地脚本
+cron "04 00 * * *" script-path=lkyl.js, enabled=true, tag=来客有礼
+
+http-request https:\/\/draw\.jdfcloud\.com\/\/api\/bean\/square\/silverBean\/task\/get\? script-path=https://raw.githubusercontent.com/Sunert/Scripts/master/Task/lkyl.js
+
+-----------------
+
 QX 1.0. 7+ :
 [task_local]
 0 9 * * * lkyl.js
@@ -33,12 +42,13 @@ hostname = draw.jdfcloud.com
 const cookieName = '来客有礼小程序'
 const signurlKey = 'sy_signurl_lkyl'
 const signheaderKey = 'sy_signheader_lkyl'
+const openkey = 'openid_lkyl'
+const appIdkey = 'app_lkyl'
 const sy = init()
 const signurlVal = sy.getdata(signurlKey)
 const signheaderVal = sy.getdata(signheaderKey)
-const token = JSON.parse(sy.getdata(signheaderKey))
-const openid = token['openId']
-const appid = token['App-Id']
+const openid = sy.getdata(openkey)
+const appid = sy.getdata(appIdkey)
 let isGetCookie = typeof $request !== 'undefined'
 if (isGetCookie) {
    GetCookie()
@@ -50,11 +60,16 @@ const requrl = $request.url
 if ($request && $request.method != 'OPTIONS') {
   const signurlVal = requrl
   const signheaderVal = JSON.stringify($request.headers)
-  const cookieVal = $request.headers['Cookie'];
+  const openid = $request.headers['openId'];
+  const appid = $request.headers['App-Id'];
   sy.log(`signurlVal:${signurlVal}`)
   sy.log(`signheaderVal:${signheaderVal}`)
   if (signurlVal) sy.setdata(signurlVal, signurlKey)
   if (signheaderVal) sy.setdata(signheaderVal, signheaderKey)
+  if (openid) sy.setdata(openid,openkey);
+  if (appid) sy.setdata(appid,appIdkey);
+    sy.log(`openid:${openid}`)
+    sy.log(`appid:${appid}`)
   sy.msg(cookieName, `获取Cookie: 成功🎉`, ``)
   }
  }
@@ -68,7 +83,6 @@ async function all()
   await weektask();
   await total()
 }
-
 function sign() {
   return new Promise((resolve, reject) =>{
 	let signurl = {
@@ -102,7 +116,7 @@ function lottery() {
 	}
      daytaskurl.headers[`Content-Length`] = `0`;
     sy.get(daytaskurl, (error, response, data) => {
-    sy.log(`${cookieName}, 今日0元抽奖 ${data}`)
+    //sy.log(`${cookieName}, 今日0元抽奖 ${data}`)
       let lotteryres = JSON.parse(data)
       Incomplete = lotteryres.data.totalSteps - lotteryres.data.doneSteps
      if (Incomplete >0 ){
@@ -110,7 +124,7 @@ function lottery() {
      detail += `您有${Incomplete}个0元抽奖未完成\n`
      }
      else if (Incomplete == 0 ){
-detail += `今日0元抽奖任务已完成，获得${taskstatus.data.dailyTasks[0].taskReward}个银币\n` }
+detail += `今日0元抽奖任务已完成，获得${lotteryres.data.rewardAmount}个银币\n` }
    resolve()
    }) 
   })
@@ -146,7 +160,7 @@ function video() {
           body: bodyVal}
     videourl.headers['Content-Length'] = `0`;
    sy.post(videourl, (error, response, data) =>{
-      //sy.log(`${cookieName}, 视频: ${data}`)
+      sy.log(`${cookieName}, 视频: ${data}`)
     let videotaskurl = {
 	 url: `https://draw.jdfcloud.com//api/bean/square/silverBean/taskReward/get?openId=${openid}&taskCode=watch_video&inviterOpenId=&appId=${appid}`,headers: JSON.parse(signheaderVal)}
     videotaskurl.headers['Content-Length'] = `0`;
@@ -166,7 +180,7 @@ function award() {
 		headers: JSON.parse(signheaderVal)}
      weektaskurl.headers['Content-Length'] = `0`;
     sy.get(weektaskurl, (error, response, data) => {
-     sy.log(`${cookieName}, data: ${data}`)
+     //sy.log(`${cookieName}, data: ${data}`)
       result = JSON.parse(data)
     if (result.success == true) {
       for (k=0;result.data.homeActivities[k].participated==false&&k<Incomplete;k++){
@@ -195,7 +209,7 @@ return new Promise((resolve, reject) => {
    beanurl.headers['Content-Length'] = `0`;
     sy.get(beanurl, (error, response, data) =>
   {
-     //sy.log(`${cookieName}, data: ${data}`)
+     sy.log(`${cookieName}, data: ${data}`)
     })
    resolve()
    })
@@ -210,7 +224,6 @@ return new Promise((resolve, reject) => {
    bean2url.headers['Content-Length'] = `0`;
     sy.get(bean2url, (error, response, data) =>
   {
-     sy.log(`${cookieName}, data: ${data}`)
     })
    resolve()
    })
@@ -225,7 +238,7 @@ function total() {
 	}
      lotteryurl.headers['Content-Length'] = `0`;
     sy.get(lotteryurl, (error, response, data) => {
-    //sy.log(`${cookieName}, data: ${data}`)
+    sy.log(`${cookieName}, data: ${data}`)
       let result = JSON.parse(data)
       const title = `${cookieName}`
       if (result.success == true) {
@@ -240,15 +253,21 @@ function total() {
       //sy.log(`${cookieName}, data: ${data}`)
       let result = JSON.parse(data)
       const title = `${cookieName}`
-      if (SilverBean >= result.datas[0].salePrice) {
+
+   if (SilverBean >result.datas[0].salePrice) {
     for (k=0; k < result.datas.length;k++){
     if (result.datas[k].salePrice >= SilverBean && SilverBean > result.datas[k-1].salePrice)
      {
       subTitle += `${result.datas[k-1].memo}(手动兑换)`}
+
     }
    } else if (SilverBean < result.datas[0].salePrice) 
     { 
        subTitle += `  银豆不足以兑换京豆`
+    }
+else if (SilverBean = result.datas[0].salePrice) 
+    { 
+       subTitle +=`${result.datas[0].memo}(手动兑换)`
     }
     sy.msg(cookieName+res, subTitle, detail)
     })
